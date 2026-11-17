@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Robot Controller</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden;background:#111;color:#eee;font-family:monospace;touch-action:none}
+#app{display:flex;flex-direction:column;height:100vh;height:100dvh}
+#topbar{background:#1a1a1a;border-bottom:1px solid #333;padding:6px 10px;display:flex;flex-direction:column;gap:4px;flex-shrink:0}
+#toprow{display:flex;align-items:center;gap:8px}
+#statusDot{font-size:12px;flex:1;white-space:nowrap}
+#speedBadge{font-size:11px;color:#ff8800;white-space:nowrap}
+.sbar{font-size:11px;color:#00ff88;display:flex;gap:10px;flex-wrap:wrap}
+.sbar span{color:#666}
+#tabs{display:flex;background:#1a1a1a;border-bottom:1px solid #333;flex-shrink:0}
+.tab{flex:1;padding:9px 4px;text-align:center;font-size:11px;color:#666;cursor:pointer;border-bottom:2px solid transparent;letter-spacing:.5px;text-transform:uppercase}
+.tab.active{color:#00ccff;border-bottom-color:#00ccff}
+#pages{flex:1;overflow:hidden;position:relative}
+.page{position:absolute;inset:0;overflow-y:auto;padding:10px;display:none;flex-direction:column;gap:10px}
+.page.active{display:flex}
+.card{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:8px;padding:10px}
+.card-title{font-size:10px;color:#00ccff;letter-spacing:1px;font-weight:bold;border-bottom:1px solid #2a2a2a;padding-bottom:5px;margin-bottom:8px;text-transform:uppercase}
+#joyCard{width:100%;display:flex;flex-direction:column;align-items:center;gap:6px}
+#joystickCanvas{border-radius:50%;background:#1e1e1e;border:2px solid #2a2a2a;touch-action:none;display:block}
+#driveValues{font-size:12px;color:#00ff88;letter-spacing:1px}
+#btnStop{background:#6b1a1a;width:100%;padding:13px;font-size:16px;font-weight:bold;border:2px solid #aa2222;border-radius:8px;color:#ff6666;cursor:pointer;font-family:monospace;letter-spacing:2px;min-height:48px}
+#btnStop:active{background:#aa2222;color:#fff}
+.spd-row{display:flex;align-items:center;gap:8px}
+.spd-row label{font-size:11px;color:#666;white-space:nowrap;width:50px}
+.spd-row input[type=range]{flex:1;accent-color:#ff8800;height:22px}
+.spd-val{font-size:13px;font-weight:bold;color:#ff8800;width:40px;text-align:right}
+.preset-row{display:flex;gap:5px;margin-top:6px}
+.preset-btn{flex:1;background:#222;border:1px solid #333;border-radius:5px;color:#888;font-family:monospace;font-size:11px;padding:6px;cursor:pointer;min-height:36px}
+.preset-btn:active{background:#333}
+.mode-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.mode-btn{padding:11px 6px;font-size:12px;font-weight:bold;border:2px solid #2a2a2a;border-radius:8px;cursor:pointer;color:#666;background:#1a1a1a;font-family:monospace;min-height:46px;transition:all 0.15s;width:100%}
+.mode-btn.active{color:#111;background:#00ff88;border-color:#00ff88}
+.mode-btn:active{opacity:0.7}
+.sensor-grid{display:grid;grid-template-columns:auto 1fr;gap:5px 12px;font-size:13px;align-items:center}
+.lbl{color:#666;font-size:11px}
+.val{color:#00ff88;font-weight:bold}
+.val.warn{color:#ff4444}
+.val.ir-on{color:#ffaa00}
+.svo-row{display:flex;align-items:center;gap:8px;padding:3px 0}
+.svo-row label{font-size:11px;color:#888;width:80px;flex-shrink:0}
+.svo-row input[type=range]{flex:1;accent-color:#00ccff;height:22px}
+.svo-val{font-size:12px;color:#fff;width:32px;text-align:right;flex-shrink:0}
+.light-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.lbtn{padding:11px 6px;font-size:12px;border:2px solid transparent;border-radius:6px;cursor:pointer;color:#fff;font-family:monospace;min-height:44px;transition:all 0.15s}
+.lbtn:active{opacity:0.7}
+#btnLOff{background:#2a2a2a;color:#888}
+#btnLLeft{background:#3d3300;color:#ffdd00}
+#btnLRight{background:#3d3300;color:#ffdd00}
+#btnLHaz{background:#4a2600;color:#ffaa00}
+#btnHL{background:#1a2640;color:#6699cc;grid-column:1/-1}
+#btnHL.on{background:#003366;color:#00aaff}
+.lbtn.lit{outline:2px solid currentColor;outline-offset:2px}
+#camPage{padding:0!important;background:#000!important;overflow:hidden!important}
+#camWrap{position:relative;width:100%;height:100%;display:flex;flex-direction:column}
+#camFull{width:100%;flex:1;object-fit:contain;background:#000;display:block;min-height:0}
+#camOverlay{background:rgba(0,0,0,0.75);padding:8px 12px;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-shrink:0}
+#camErr{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;background:#000;color:#ff4444;font-size:13px;gap:10px;text-align:center}
+.cam-mode-btn{background:#222;border:1px solid #444;color:#aaa;padding:5px 10px;border-radius:5px;font-size:11px;font-family:monospace;cursor:pointer;min-height:36px}
+.cam-mode-btn.active{background:#00ff88;color:#111;border-color:#00ff88}
+</style>
+</head>
+<body>
+<div id="app">
+
+<div id="topbar">
+  <div id="toprow">
+    <span id="statusDot">⚫ Connecting...</span>
+    <span id="speedBadge">SPD 100%</span>
+  </div>
+  <div class="sbar">
+    <span>F:</span><b id="sf">---</b>cm
+    <span>L:</span><b id="sl">---</b>cm
+    <span>R:</span><b id="sr">---</b>cm
+    <span>IR:</span><b id="sirl">-</b>/<b id="sirr">-</b>
+    <span>Mode:</span><b id="smode" style="color:#00ccff">MANUAL</b>
+    <span>Mtr:</span><b id="smtr">0/0</b>
+  </div>
+</div>
+
+<div id="tabs">
+  <div class="tab active" onclick="showTab('drivePage',this)">DRIVE</div>
+  <div class="tab" onclick="showTab('armPage',this)">ARM</div>
+  <div class="tab" onclick="showTab('camPage',this)">CAM</div>
+</div>
+
+<div id="pages">
+
+  <div class="page active" id="drivePage">
+
+    <div class="card" style="padding:6px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+        <span class="card-title" style="margin:0;border:none;padding:0">CAMERA</span>
+        <button onclick="toggleMiniCam()" id="btnMiniCam" style="background:#222;border:1px solid #333;color:#888;font-family:monospace;font-size:10px;padding:3px 8px;border-radius:4px;cursor:pointer">HIDE</button>
+      </div>
+      <div id="miniCamWrap">
+        <img id="camStream" src="" style="width:100%;border-radius:5px;display:block;background:#000;min-height:140px;max-height:220px;object-fit:contain">
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Mode</div>
+      <div class="mode-grid">
+        <button class="mode-btn active" id="modeMANUAL"   onclick="setMode('MANUAL')">🕹 MANUAL</button>
+        <button class="mode-btn"        id="modeSUMO"     onclick="setMode('SUMO')">⚔ SUMO</button>
+        <button class="mode-btn"        id="modeFOLLOW"   onclick="setMode('FOLLOW')">🧍 FOLLOW</button>
+        <button class="mode-btn"        id="modeOBSTACLE" onclick="setMode('OBSTACLE')">🚧 OBSTACLE</button>
+        <button class="mode-btn"        id="modeMAZE"     onclick="setMode('MAZE')">🌀 MAZE</button>
+      </div>
+      <div id="modeStatus" style="text-align:center;margin-top:6px;font-size:11px;color:#00ff88">MANUAL — joystick active</div>
+    </div>
+
+    <div class="card" id="joyCard">
+      <div class="card-title">Joystick</div>
+      <canvas id="joystickCanvas" style="display:block;margin:0 auto"></canvas>
+      <div id="driveValues" style="text-align:center;font-size:12px;color:#00ff88;margin-top:4px">L: 0 &nbsp; R: 0</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Speed Limit</div>
+      <div class="spd-row">
+        <label>Limit</label>
+        <input type="range" min="5" max="100" value="100" step="5" id="spdSlider" oninput="onSpeed(this)">
+        <span class="spd-val" id="spdVal">100%</span>
+      </div>
+      <div class="preset-row">
+        <button class="preset-btn" onclick="setSpd(25)">25%</button>
+        <button class="preset-btn" onclick="setSpd(50)">50%</button>
+        <button class="preset-btn" onclick="setSpd(75)">75%</button>
+        <button class="preset-btn" onclick="setSpd(100)" style="color:#ff8800">MAX</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Lights</div>
+      <div class="light-grid">
+        <button class="lbtn lit" id="btnLOff"   onclick="setLightMode(0)">Off</button>
+        <button class="lbtn"     id="btnLLeft"  onclick="setLightMode(1)">◀ Left</button>
+        <button class="lbtn"     id="btnLRight" onclick="setLightMode(2)">Right ▶</button>
+        <button class="lbtn"     id="btnLHaz"   onclick="setLightMode(3)">⚠ Hazard</button>
+        <button class="lbtn"     id="btnHL"     onclick="toggleHL()">Headlight OFF</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Sensors</div>
+      <div class="sensor-grid">
+        <span class="lbl">Front</span><span class="val" id="tvF">--- cm</span>
+        <span class="lbl">Left</span> <span class="val" id="tvL">--- cm</span>
+        <span class="lbl">Right</span><span class="val" id="tvR">--- cm</span>
+        <span class="lbl">IR Left</span><span class="val" id="tvIL">clear</span>
+        <span class="lbl">IR Right</span><span class="val" id="tvIR">clear</span>
+        <span class="lbl">Motors</span><span class="val" id="tvMtr">0 / 0</span>
+      </div>
+    </div>
+
+    <button id="btnStop" onclick="emergencyStop()">■ EMERGENCY STOP</button>
+
+  </div>
+
+  <div class="page" id="armPage">
+    <div class="card">
+      <div class="card-title">Servo Controls</div>
+      <div class="svo-row"><label>S1 Base</label>    <input type="range" min="30" max="150" value="90" oninput="servoMove(0,this)"><span class="svo-val" id="v0">90</span></div>
+      <div class="svo-row"><label>S2 Shoulder</label><input type="range" min="30" max="150" value="90" oninput="servoMove(1,this)"><span class="svo-val" id="v1">90</span></div>
+      <div class="svo-row"><label>S3 Elbow</label>   <input type="range" min="30" max="150" value="90" oninput="servoMove(2,this)"><span class="svo-val" id="v2">90</span></div>
+      <div class="svo-row"><label>S4 Wrist</label>   <input type="range" min="30" max="150" value="90" oninput="servoMove(3,this)"><span class="svo-val" id="v3">90</span></div>
+      <div class="svo-row"><label>S5 Gripper</label> <input type="range" min="30" max="150" value="90" oninput="servoMove(4,this)"><span class="svo-val" id="v4">90</span></div>
+      <div class="svo-row"><label>S6 Extra</label>   <input type="range" min="30" max="150" value="90" oninput="servoMove(5,this)"><span class="svo-val" id="v5">90</span></div>
+      <div class="svo-row" style="margin-top:8px;padding-top:8px;border-top:1px solid #2a2a2a">
+        <label>Arm Speed</label>
+        <input type="range" min="1" max="10" value="5" step="1" id="armSpd" oninput="onArmSpeed(this)" style="flex:1;accent-color:#00ccff;height:22px">
+        <span class="svo-val" id="armSpdVal">5</span>
+      </div>
+      <div class="preset-row" style="margin-top:6px">
+        <button class="preset-btn" onclick="setArmSpd(1)">SLOW</button>
+        <button class="preset-btn" onclick="setArmSpd(5)">MED</button>
+        <button class="preset-btn" onclick="setArmSpd(10)" style="color:#ff8800">FAST</button>
+        <button class="preset-btn" onclick="centerServos()" style="color:#00ccff">CENTER</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">PS4 Reference</div>
+      <div style="display:grid;grid-template-columns:auto 1fr;gap:4px 14px;font-size:11px;align-items:center">
+        <span style="color:#666">L-Stick</span><span>Drive</span>
+        <span style="color:#666">R-Stick</span><span>S1 + S2</span>
+        <span style="color:#666">L1 / R1</span><span>S5 Gripper</span>
+        <span style="color:#666">L2 / R2</span><span>S4 Wrist</span>
+        <span style="color:#666">D▲ / D▼</span><span>Headlight / Center</span>
+        <span style="color:#666">□ / ○ / △</span><span>Left / Right / Hazard</span>
+        <span style="color:#666">Options</span><span>Emergency stop</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="page" id="camPage" style="padding:0;background:#000;overflow:hidden">
+    <div id="camWrap">
+      <img id="camFull" src="" style="width:100%;display:block;background:#000;object-fit:contain"
+        onerror="document.getElementById('camErr').style.display='flex'"
+        onload="document.getElementById('camErr').style.display='none'">
+      <div id="camErr">
+        <span style="font-size:36px">📷</span>
+        <span>Stream not reachable</span>
+        <span style="color:#555;font-size:11px">192.168.100.1:8080</span>
+        <button onclick="retryCam()" class="cam-mode-btn" style="margin-top:8px">Retry</button>
+      </div>
+      <div id="camOverlay">
+        <span id="camModeLabel" style="font-family:monospace;font-size:12px;font-weight:bold;color:#00ff88">MANUAL</span>
+        <div style="display:flex;gap:5px">
+          <button class="cam-mode-btn active" id="camBtnMANUAL"   onclick="setMode('MANUAL')">MANUAL</button>
+          <button class="cam-mode-btn"        id="camBtnSUMO"     onclick="setMode('SUMO')">SUMO</button>
+          <button class="cam-mode-btn"        id="camBtnFOLLOW"   onclick="setMode('FOLLOW')">FOLLOW</button>
+          <button class="cam-mode-btn"        id="camBtnOBSTACLE" onclick="setMode('OBSTACLE')">OBSTACLE</button>
+          <button class="cam-mode-btn"        id="camBtnMAZE"     onclick="setMode('MAZE')">MAZE</button>
+        </div>
+        <button onclick="toggleFull()" style="background:none;border:1px solid #555;color:#aaa;padding:5px 8px;border-radius:5px;font-size:14px;cursor:pointer">⛶</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<script>
+var WS_URL = 'ws://' + window.location.hostname + ':8765';
+var CAM_URL = 'http://192.168.100.1:8080/?action=stream';
+
+var ws = null;
+var wsReconnectTimer = null;
+var wsConnecting = false;
+var wsHeartbeat = null;
+
+var hlOn = false;
+var joyActive = false, joyX = 0, joyY = 0;
+var driveInt = null;
+var speedLimit = 100;
+var currentMode = 'MANUAL';
+var miniCamVisible = true;
+
+var lastDriveL = 0;
+var lastDriveR = 0;
+
+// ── WebSocket ─────────────────────────────────────────────
+function connect() {
+  if (wsConnecting) return;
+  wsConnecting = true;
+  try {
+    if (ws) {
+      ws.onopen = null; ws.onclose = null;
+      ws.onerror = null; ws.onmessage = null;
+      try { ws.close(); } catch(e) {}
+    }
+  } catch(e) {}
+  setStatus('connecting');
+  ws = new WebSocket(WS_URL);
+  ws.onopen = function() {
+    wsConnecting = false;
+    setStatus('connected');
+    if (wsHeartbeat) clearInterval(wsHeartbeat);
+    wsHeartbeat = setInterval(function(){ send('PING'); }, 2000);
+  };
+  ws.onclose = function() {
+    wsConnecting = false;
+    setStatus('disconnected');
+    emergencyStop();
+    if (wsHeartbeat) { clearInterval(wsHeartbeat); wsHeartbeat = null; }
+    if (wsReconnectTimer) clearTimeout(wsReconnectTimer);
+    wsReconnectTimer = setTimeout(function(){ connect(); }, 3000);
+  };
+  ws.onerror = function() { setStatus('error'); };
+  ws.onmessage = function(e) {
+    try { updateSensors(JSON.parse(e.data)); } catch(err) {}
+  };
+}
+
+function send(cmd) {
+  if (!ws) return;
+  if (ws.readyState !== WebSocket.OPEN) return;
+  try { ws.send(cmd); } catch(e) {}
+}
+
+function setStatus(s) {
+  var m = {connected:'🟢 Connected', connecting:'🟡 Connecting...', error:'🔴 Error', disconnected:'⚫ Disconnected — retrying...'};
+  document.getElementById('statusDot').textContent = m[s] || s;
+}
+
+// ── Sensors ───────────────────────────────────────────────
+function updateSensors(d) {
+  var f=d.F??999, l=d.L??999, r=d.R??999;
+  setDist('tvF','sf',f,25);
+  setDist('tvL','sl',l,18);
+  setDist('tvR','sr',r,18);
+  setIR('tvIL','sirl', d.IL===1);
+  setIR('tvIR','sirr', d.IR===1);
+  var sl=d.SL??0, sr=d.SR??0;
+  document.getElementById('tvMtr').textContent = sl+' / '+sr;
+  document.getElementById('smtr').textContent  = sl+'/'+sr;
+  if (d.mode && d.mode !== currentMode) syncMode(d.mode);
+  if (d.armSpeed !== undefined) {
+    var a=document.getElementById('armSpd'); if(a) a.value=d.armSpeed;
+    var av=document.getElementById('armSpdVal'); if(av) av.textContent=d.armSpeed;
+  }
+  if (d.lightMode !== undefined) {
+    ['btnLOff','btnLLeft','btnLRight','btnLHaz'].forEach(function(id,i){
+      var e=document.getElementById(id); if(e) e.className='lbtn'+(i===d.lightMode?' lit':'');
+    });
+  }
+}
+
+function setDist(cid, bid, val, warnAt) {
+  var el = document.getElementById(cid);
+  el.textContent = val>=999 ? '--- cm' : val+' cm';
+  el.className = 'val'+(val<warnAt?' warn':'');
+  document.getElementById(bid).textContent = val>=999?'---':val;
+}
+
+function setIR(cid, bid, on) {
+  var el = document.getElementById(cid);
+  el.textContent = on ? 'DETECTED' : 'clear';
+  el.className = 'val'+(on?' ir-on':'');
+  document.getElementById(bid).textContent = on?'1':'0';
+}
+
+// ── Tabs ──────────────────────────────────────────────────
+function showTab(pageId, el) {
+  document.querySelectorAll('.page').forEach(function(p){ p.classList.remove('active'); });
+  document.querySelectorAll('.tab').forEach(function(t){ t.classList.remove('active'); });
+  document.getElementById(pageId).classList.add('active');
+  el.classList.add('active');
+  document.getElementById('camStream').src = (pageId==='drivePage' && miniCamVisible) ? CAM_URL : '';
+  if (pageId === 'drivePage') {
+    setTimeout(resizeCanvas, 100);
+    setTimeout(resizeCanvas, 300); // double resize for safety
+  }
+  if (pageId === 'camPage') {
+    document.getElementById('camFull').src = CAM_URL;
+    sizeCamPage();
+  } else {
+    document.getElementById('camFull').src = '';
+  }
+}
+
+function sizeCamPage() {
+  var h = window.innerHeight
+    - document.getElementById('topbar').offsetHeight
+    - document.getElementById('tabs').offsetHeight
+    - (document.getElementById('camOverlay').offsetHeight || 50);
+  document.getElementById('camFull').style.height = Math.max(h, 80) + 'px';
+}
+
+function toggleMiniCam() {
+  miniCamVisible = !miniCamVisible;
+  document.getElementById('miniCamWrap').style.display = miniCamVisible ? '' : 'none';
+  document.getElementById('btnMiniCam').textContent    = miniCamVisible ? 'HIDE' : 'SHOW';
+  document.getElementById('camStream').src = miniCamVisible ? CAM_URL : '';
+  setTimeout(resizeCanvas, 80);
+}
+
+function retryCam() {
+  document.getElementById('camErr').style.display = 'none';
+  document.getElementById('camFull').src = CAM_URL + '&t=' + Date.now();
+}
+
+function toggleFull() {
+  var el = document.getElementById('camPage');
+  if (!document.fullscreenElement) el.requestFullscreen && el.requestFullscreen();
+  else document.exitFullscreen && document.exitFullscreen();
+}
+
+// ── Mode ──────────────────────────────────────────────────
+var MODE_DESC = {
+  MANUAL:   'MANUAL — joystick active',
+  SUMO:     'SUMO — IR edge + ultrasonic attack',
+  FOLLOW:   'FOLLOW — follows person at set distance',
+  OBSTACLE: 'OBSTACLE — auto avoidance',
+  MAZE:     'MAZE — right wall follower'
+};
+
+function setMode(mode) { syncMode(mode); send('MODE:'+mode); }
+
+function syncMode(mode) {
+  currentMode = mode;
+  document.getElementById('smode').textContent = mode;
+  document.getElementById('modeStatus').textContent = MODE_DESC[mode]||mode;
+  document.getElementById('camModeLabel').textContent = mode;
+  ['MANUAL','SUMO','FOLLOW','OBSTACLE','MAZE'].forEach(function(m){
+    var b=document.getElementById('mode'+m); if(b) b.className='mode-btn'+(m===mode?' active':'');
+  });
+  ['MANUAL','SUMO','FOLLOW','OBSTACLE','MAZE'].forEach(function(m){
+    var b=document.getElementById('camBtn'+m); if(b) b.className='cam-mode-btn'+(m===mode?' active':'');
+  });
+  var jc=document.getElementById('joyCard');
+  jc.style.opacity = mode==='MANUAL'?'1':'0.35';
+  jc.style.pointerEvents = mode==='MANUAL'?'auto':'none';
+}
+
+// ── Speed ─────────────────────────────────────────────────
+function onSpeed(el) {
+  speedLimit=parseInt(el.value);
+  document.getElementById('spdVal').textContent=''+speedLimit+'%';
+  document.getElementById('speedBadge').textContent='SPD '+speedLimit+'%';
+}
+function setSpd(v) {
+  speedLimit=v;
+  document.getElementById('spdSlider').value=v;
+  document.getElementById('spdVal').textContent=v+'%';
+  document.getElementById('speedBadge').textContent='SPD '+v+'%';
+}
+
+// ── Lights ────────────────────────────────────────────────
+function setLightMode(mode) {
+  send('LIGHT:'+mode);
+  ['btnLOff','btnLLeft','btnLRight','btnLHaz'].forEach(function(id,i){
+    document.getElementById(id).className='lbtn'+(i===mode?' lit':'');
+  });
+}
+function toggleHL() {
+  hlOn=!hlOn; send('HL:'+(hlOn?'1':'0'));
+  var b=document.getElementById('btnHL');
+  b.textContent=hlOn?'Headlight ON':'Headlight OFF';
+  b.className=hlOn?'lbtn on':'lbtn';
+}
+
+// ── Servos ────────────────────────────────────────────────
+var servoTimers = {};
+function servoMove(ch, el) {
+  var val = el.value;  // capture NOW before timeout
+  document.getElementById('v'+ch).textContent = val;
+  clearTimeout(servoTimers[ch]);
+  servoTimers[ch] = setTimeout(function() {
+    send('SERVO:' + ch + ',' + val);
+  }, 60);
+}
+function centerServos(){
+  var sliders = document.querySelectorAll('#armPage .svo-row input[type=range]');
+  for(var i=0;i<6;i++){
+    sliders[i].value=90;
+    document.getElementById('v'+i).textContent=90;
+    // Stagger sends 50ms apart to avoid flooding
+    (function(ch){ setTimeout(function(){ send('SERVO:'+ch+',90'); }, ch*50); })(i);
+  }
+}
+function onArmSpeed(el){ document.getElementById('armSpdVal').textContent=el.value; send('ARMSPEED:'+el.value); }
+function setArmSpd(v){ document.getElementById('armSpd').value=v; document.getElementById('armSpdVal').textContent=v; send('ARMSPEED:'+v); }
+
+// ── Stop ──────────────────────────────────────────────────
+function emergencyStop(){
+  joyActive=false; joyX=0; joyY=0; drawJoy(0,0);
+  document.getElementById('driveValues').textContent='L: 0   R: 0';
+  send('STOP');
+}
+
+// ── Joystick ──────────────────────────────────────────────
+var canvas=document.getElementById('joystickCanvas');
+var ctx=canvas.getContext('2d');
+var CX,CY,RADIUS,KNOB_R;
+
+function resizeCanvas(){
+  var card=document.getElementById('joyCard');
+  var sz=Math.min(card.clientWidth-24, window.innerWidth-40, 280);
+  sz=Math.max(sz,180);
+  canvas.width=canvas.height=sz;
+  CX=CY=sz/2; RADIUS=sz*0.38; KNOB_R=sz*0.13;
+  drawJoy(joyX,joyY);
+}
+
+function drawJoy(nx,ny){
+  if(!canvas.width) return;
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.beginPath(); ctx.arc(CX,CY,RADIUS,0,Math.PI*2);
+  ctx.strokeStyle='#333'; ctx.lineWidth=2; ctx.stroke();
+  ctx.strokeStyle='#222'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(CX,CY-RADIUS); ctx.lineTo(CX,CY+RADIUS); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(CX-RADIUS,CY); ctx.lineTo(CX+RADIUS,CY); ctx.stroke();
+  var kx=CX+nx*RADIUS, ky=CY+ny*RADIUS;
+  var g=ctx.createRadialGradient(kx-KNOB_R*0.3,ky-KNOB_R*0.3,1,kx,ky,KNOB_R);
+  g.addColorStop(0,'#44eeff'); g.addColorStop(1,'#0077aa');
+  ctx.beginPath(); ctx.arc(kx,ky,KNOB_R,0,Math.PI*2);
+  ctx.fillStyle=g; ctx.fill();
+}
+
+function getJoyPos(e){
+  var rect=canvas.getBoundingClientRect();
+  var src=e.changedTouches?e.changedTouches[0]:e.touches?e.touches[0]:e;
+  var sx=canvas.width/rect.width, sy=canvas.height/rect.height;
+  var x=((src.clientX-rect.left)*sx-CX)/RADIUS;
+  var y=((src.clientY-rect.top)*sy-CY)/RADIUS;
+  var d=Math.sqrt(x*x+y*y); if(d>1){x/=d;y/=d;}
+  return {x:x,y:y};
+}
+
+canvas.addEventListener('touchstart',function(e){e.preventDefault();joyActive=true;var p=getJoyPos(e);joyX=p.x;joyY=p.y;drawJoy(joyX,joyY);},{passive:false});
+canvas.addEventListener('touchmove', function(e){e.preventDefault();if(!joyActive)return;var p=getJoyPos(e);joyX=p.x;joyY=p.y;drawJoy(joyX,joyY);},{passive:false});
+canvas.addEventListener('mousedown', function(e){joyActive=true;var p=getJoyPos(e);joyX=p.x;joyY=p.y;drawJoy(joyX,joyY);});
+canvas.addEventListener('mousemove', function(e){if(!joyActive)return;var p=getJoyPos(e);joyX=p.x;joyY=p.y;drawJoy(joyX,joyY);});
+
+function releaseJoy(e){
+  if(e) e.preventDefault();
+  joyActive = false; joyX = 0; joyY = 0;
+  lastDriveL = 0; lastDriveR = 0;
+  drawJoy(0, 0);
+  document.getElementById('driveValues').textContent = 'L: 0   R: 0';
+  send('STOP');
+}
+canvas.addEventListener('touchend',   releaseJoy,{passive:false});
+canvas.addEventListener('touchcancel',releaseJoy,{passive:false});
+canvas.addEventListener('mouseup',    releaseJoy);
+canvas.addEventListener('mouseleave', releaseJoy);
+
+function startDriveLoop(){
+  if(driveInt) return;
+  driveInt = setInterval(function(){
+    if(!ws || ws.readyState !== WebSocket.OPEN) return;
+    if(currentMode !== 'MANUAL') return;
+    if(!joyActive) return;
+    var max = Math.round(255 * speedLimit / 100);
+    var fwd  = -joyY * max;
+    var turn =  joyX * max;
+    var L = Math.max(-max, Math.min(max, Math.round(fwd + turn)));
+    var R = Math.max(-max, Math.min(max, Math.round(fwd - turn)));
+    R = -R;
+    if (L === lastDriveL && R === lastDriveR) return;
+    lastDriveL = L; lastDriveR = R;
+    document.getElementById('driveValues').textContent = 'L: '+L+'   R: '+R;
+    send('DRIVE:' + L + ',' + R);
+  }, 60);
+}
+function stopDriveLoop(){ if(driveInt){clearInterval(driveInt);driveInt=null;} }
+
+window.addEventListener('load',function(){
+  connect();
+  startDriveLoop();  // run forever — checks ws state internally
+  setTimeout(resizeCanvas,150);
+  document.getElementById('camStream').src=CAM_URL;
+});
+window.addEventListener('resize',function(){ resizeCanvas(); sizeCamPage(); });
+</script>
+</body>
+</html>
